@@ -1,0 +1,13 @@
+*.egg-info/
+__pycache__/
+.DS_Store
+.eggs/
+.pytest_cache/
+.pytest_cache/
+.idea/
+src/
+examples/config2.yaml
+.env/
+build/
+dist/
+
