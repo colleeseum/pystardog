@@ -147,6 +147,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 {
                     "query": "select * { <http://www.w3.org/ns/dcat#Resource> ?p ?o}",
                     "reasoning": False,
+                    "useNamespaces": True,
                 },
             )
 
@@ -172,7 +173,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 timeout=120,
                 limit=3000,
                 offset=3000,
-                use_namespaces=True,
+                use_namespaces=False,
                 default_graph_uri=[
                     "https://defaulturi1.com",
                     "https://defaulturi2.com",
@@ -190,13 +191,41 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                     "timeout": 120,
                     "limit": 3000,
                     "offset": 3000,
-                    "useNamespaces": True,
+                    "useNamespaces": False,
                     "default-graph-uri": [
                         "https://defaulturi1.com",
                         "https://defaulturi2.com",
                     ],
                     "named-graph-uri": ["https://ng1.com", "https://ng2.com"],
                     "reasoning": True,
+                },
+            )
+
+            assert res == b"content"
+
+    def test_select_text_rather_enum(self):
+        # noinspection PyUnusedLocal
+
+        mock_response = mock.Mock()
+        mock_response.status_code = 200
+        mock_response.content = b"content"
+
+        with mock.patch.object(
+            Client, "post", return_value=mock_response
+        ) as mock_method:
+            qm = QueryManager("catalog")
+
+            res = qm.select(
+                "select * { <http://www.w3.org/ns/dcat#Resource> ?p ?o}",
+                content_type="application/sparql-results+xml",
+            )
+            assert self.check_call(
+                mock_method,
+                "/catalog/query",
+                {
+                    "query": "select * { <http://www.w3.org/ns/dcat#Resource> ?p ?o}",
+                    "reasoning": False,
+                    "useNamespaces": True,
                 },
             )
 
@@ -221,6 +250,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 {
                     "query": "ASK { <http://www.w3.org/ns/r2rml#class> a owl:DatatypeProperty }",
                     "reasoning": False,
+                    "useNamespaces": True,
                 },
             )
 
@@ -251,7 +281,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 timeout=120,
                 limit=3000,
                 offset=3000,
-                use_namespaces=True,
+                use_namespaces=False,
                 default_graph_uri=[
                     "https://defaulturi1.com",
                     "https://defaulturi2.com",
@@ -269,7 +299,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                     "timeout": 120,
                     "limit": 3000,
                     "offset": 3000,
-                    "useNamespaces": True,
+                    "useNamespaces": False,
                     "default-graph-uri": [
                         "https://defaulturi1.com",
                         "https://defaulturi2.com",
@@ -301,6 +331,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 {
                     "query": "ASK { <http://www.w3.org/ns/r2rml#class> a owl:DatatypeProperty }",
                     "reasoning": False,
+                    "useNamespaces": True,
                 },
             )
 
@@ -323,6 +354,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 {
                     "query": "DESCRIBE <http://www.w3.org/ns/r2rml#class>",
                     "reasoning": False,
+                    "useNamespaces": True,
                 },
             )
 
@@ -348,7 +380,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 timeout=120,
                 limit=3000,
                 offset=3000,
-                use_namespaces=True,
+                use_namespaces=False,
                 default_graph_uri=[
                     "https://defaulturi1.com",
                     "https://defaulturi2.com",
@@ -367,7 +399,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                     "timeout": 120,
                     "limit": 3000,
                     "offset": 3000,
-                    "useNamespaces": True,
+                    "useNamespaces": False,
                     "default-graph-uri": [
                         "https://defaulturi1.com",
                         "https://defaulturi2.com",
@@ -403,6 +435,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 {
                     "query": "PATHS START ?s = <http://www.w3.org/ns/r2rml#class> END ?e via rdf:type",
                     "reasoning": False,
+                    "useNamespaces": True,
                 },
             )
 
@@ -428,7 +461,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 timeout=120,
                 limit=3000,
                 offset=3000,
-                use_namespaces=True,
+                use_namespaces=False,
                 default_graph_uri=[
                     "https://defaulturi1.com",
                     "https://defaulturi2.com",
@@ -446,7 +479,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                     "timeout": 120,
                     "limit": 3000,
                     "offset": 3000,
-                    "useNamespaces": True,
+                    "useNamespaces": False,
                     "default-graph-uri": [
                         "https://defaulturi1.com",
                         "https://defaulturi2.com",
@@ -477,7 +510,11 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
             assert self.check_call(
                 mock_method,
                 "/catalog/update",
-                {"query": "INSERT { :subj :pred :obj }", "reasoning": False},
+                {
+                    "query": "INSERT { :subj :pred :obj }",
+                    "reasoning": False,
+                    "useNamespaces": True,
+                },
             )
 
     def test_update_override(self):
@@ -496,9 +533,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 reasoning=True,
                 schema_name="schemaTest",
                 timeout=120,
-                limit=3000,
-                offset=3000,
-                use_namespaces=True,
+                use_namespaces=False,
                 graph_uri="https://graph-uri.com",
                 using_graph_uri="https://using-graph-uri.com",
                 default_graph_uri="https://default-uri.com",
@@ -516,9 +551,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                     "baseUri": "https://baseuri.com",
                     "schema": "schemaTest",
                     "timeout": 120,
-                    "limit": 3000,
-                    "offset": 3000,
-                    "useNamespaces": True,
+                    "useNamespaces": False,
                     "graph-uri": "https://graph-uri.com",
                     "using-graph-uri": "https://using-graph-uri.com",
                     "default-graph-uri": "https://default-uri.com",
@@ -668,6 +701,7 @@ class TestTransaction(Test):
         mock_response.status_code = 200
         mock_response.text = "tx_id_uuid"
 
+        # noinspection PyUnusedLocal
         with mock.patch.object(
             Client, "post", return_value=mock_response
         ) as mock_method:
@@ -694,6 +728,7 @@ class TestTransaction(Test):
         with mock.patch.object(
             Client, "post", return_value=mock_response
         ) as mock_method:
+            # noinspection PyUnusedLocal
             tx = Transaction("dbtest", "tx_id_uuid_given")
 
             assert self.check_call(
@@ -793,6 +828,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 {
                     "query": "select * { <http://www.w3.org/ns/dcat#Resource> ?p ?o}",
                     "reasoning": False,
+                    "useNamespaces": True,
                 },
             )
 
@@ -867,6 +903,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 {
                     "query": "ASK { <http://www.w3.org/ns/r2rml#class> a owl:DatatypeProperty }",
                     "reasoning": False,
+                    "useNamespaces": True,
                 },
             )
 
@@ -897,7 +934,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 timeout=120,
                 limit=3000,
                 offset=3000,
-                use_namespaces=True,
+                use_namespaces=False,
                 default_graph_uri=[
                     "https://defaulturi1.com",
                     "https://defaulturi2.com",
@@ -915,7 +952,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                     "timeout": 120,
                     "limit": 3000,
                     "offset": 3000,
-                    "useNamespaces": True,
+                    "useNamespaces": False,
                     "default-graph-uri": [
                         "https://defaulturi1.com",
                         "https://defaulturi2.com",
@@ -947,6 +984,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 {
                     "query": "ASK { <http://www.w3.org/ns/r2rml#class> a owl:DatatypeProperty }",
                     "reasoning": False,
+                    "useNamespaces": True,
                 },
             )
 
@@ -969,6 +1007,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 {
                     "query": "DESCRIBE <http://www.w3.org/ns/r2rml#class>",
                     "reasoning": False,
+                    "useNamespaces": True,
                 },
             )
 
@@ -994,7 +1033,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 timeout=120,
                 limit=3000,
                 offset=3000,
-                use_namespaces=True,
+                use_namespaces=False,
                 default_graph_uri=[
                     "https://defaulturi1.com",
                     "https://defaulturi2.com",
@@ -1013,7 +1052,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                     "timeout": 120,
                     "limit": 3000,
                     "offset": 3000,
-                    "useNamespaces": True,
+                    "useNamespaces": False,
                     "default-graph-uri": [
                         "https://defaulturi1.com",
                         "https://defaulturi2.com",
@@ -1049,6 +1088,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 {
                     "query": "PATHS START ?s = <http://www.w3.org/ns/r2rml#class> END ?e via rdf:type",
                     "reasoning": False,
+                    "useNamespaces": True,
                 },
             )
 
@@ -1074,7 +1114,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 timeout=120,
                 limit=3000,
                 offset=3000,
-                use_namespaces=True,
+                use_namespaces=False,
                 default_graph_uri=[
                     "https://defaulturi1.com",
                     "https://defaulturi2.com",
@@ -1092,7 +1132,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                     "timeout": 120,
                     "limit": 3000,
                     "offset": 3000,
-                    "useNamespaces": True,
+                    "useNamespaces": False,
                     "default-graph-uri": [
                         "https://defaulturi1.com",
                         "https://defaulturi2.com",
@@ -1123,7 +1163,11 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
             assert self.check_call(
                 mock_method,
                 "/dbtest/tx_id_uuid/update",
-                {"query": "INSERT { :subj :pred :obj }", "reasoning": False},
+                {
+                    "query": "INSERT { :subj :pred :obj }",
+                    "reasoning": False,
+                    "useNamespaces": True,
+                },
             )
 
     def test_update_override(self):
@@ -1142,9 +1186,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 reasoning=True,
                 schema_name="schemaTest",
                 timeout=120,
-                limit=3000,
-                offset=3000,
-                use_namespaces=True,
+                use_namespaces=False,
                 graph_uri="https://graph-uri.com",
                 using_graph_uri="https://using-graph-uri.com",
                 default_graph_uri="https://default-uri.com",
@@ -1162,9 +1204,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                     "baseUri": "https://baseuri.com",
                     "schema": "schemaTest",
                     "timeout": 120,
-                    "limit": 3000,
-                    "offset": 3000,
-                    "useNamespaces": True,
+                    "useNamespaces": False,
                     "graph-uri": "https://graph-uri.com",
                     "using-graph-uri": "https://using-graph-uri.com",
                     "default-graph-uri": "https://default-uri.com",
@@ -1295,7 +1335,6 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
         with mock.patch.object(
             Client, "get", return_value=mock_response
         ) as mock_method:
-
             tx = self.get_tx()
             res = tx.explain_inconsistency("https://example.org/ng")
 
@@ -1322,24 +1361,28 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
             assert tx.closed
             assert tx.reason == "This transaction was already committed"
 
+        # noinspection PyUnusedLocal
         with pytest.raises(
             StardogException,
             match=re.escape("This transaction was already committed"),
         ) as e:
             tx.commit()
 
+        # noinspection PyUnusedLocal
         with pytest.raises(
             StardogException,
             match=re.escape("This transaction was already committed"),
         ) as e:
             tx.rollback()
 
+        # noinspection PyUnusedLocal
         with pytest.raises(
             StardogException,
             match=re.escape("This transaction was already committed"),
         ) as e:
             tx.select("select * { <http://www.w3.org/ns/dcat#Resource> ?p ?o}")
 
+        # noinspection PyUnusedLocal
         with pytest.raises(
             StardogException,
             match=re.escape("This transaction was already committed"),
@@ -1349,6 +1392,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 "https://example.org/stardog#test",
             )
 
+        # noinspection PyUnusedLocal
         with pytest.raises(
             StardogException,
             match=re.escape("This transaction was already committed"),
@@ -1358,6 +1402,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
                 "https://example.org/stardog#test",
             )
 
+        # noinspection PyUnusedLocal
         with pytest.raises(
             StardogException,
             match=re.escape("This transaction was already committed"),

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from distutils.util import strtobool
-from typing import List, ForwardRef
+from typing import List, ForwardRef, Union
 
 from pydantic import validate_arguments
 
@@ -11,11 +11,17 @@ from stardog2.content import (
     AskContentType,
     ContentType,
     GraphContentType,
+    GraphContent,
 )
 from stardog2.exceptions import StardogException
-from stardog2.resource import Resource, ResourceType, Database, mixedmethod
+from stardog2.resource import Resource, ResourceType, Database
+from stardog2.utils.pydantic import sd_validate_arguments
 
 Transaction = ForwardRef("Transaction")
+
+
+def custom_validate_arguments(f):
+    return sd_validate_arguments(f, globals())
 
 
 class QueryManager(Resource):
@@ -57,6 +63,7 @@ class QueryManager(Resource):
             "offset",
             "timeout",
             "reasoning",
+            "prettyify",
             ("schema_name", "schema"),
             ("use_namespaces", "useNamespaces"),
             ("graph_uri", "graph-uri"),
@@ -132,7 +139,7 @@ class QueryManager(Resource):
 
     def list_tx(self) -> List[Transaction]:
         def mapper(n):
-            return Transaction(n["db"], n["id"])
+            return Transaction(n["db"], n["id"], new=False)
 
         r = self.client().get(f"/{self.db_name}/transaction")
 
@@ -202,19 +209,19 @@ class QueryManager(Resource):
 
         return r.text
 
-    @validate_arguments()
+    @custom_validate_arguments
     def select(
         self,
         query,
         bindings: dict = None,
-        content_type: SelectContentType = SelectContentType.SPARQL_JSON,
+        content_type: Union[SelectContentType, str] = SelectContentType.SPARQL_JSON,
         base_uri: str = None,
         reasoning: bool = False,
         schema_name: str = None,
         timeout: int = None,
         limit: int = None,
         offset: int = None,
-        use_namespaces: bool = None,
+        use_namespaces: bool = True,
         default_graph_uri: List[str] = None,
         named_graph_uri: List[str] = None,
     ):
@@ -262,19 +269,20 @@ class QueryManager(Resource):
 
         return self._query(query, "query", locals())
 
-    @validate_arguments()
+    @custom_validate_arguments
     def graph(
         self,
         query,
         bindings: dict = None,
-        content_type: GraphContentType = GraphContentType.TURTLE,
+        content_type: Union[GraphContentType, str] = GraphContentType.TURTLE,
         base_uri: str = None,
         reasoning: bool = False,
+        prettify: bool = False,
         schema_name: str = None,
         timeout: int = None,
         limit: int = None,
         offset: int = None,
-        use_namespaces: bool = None,
+        use_namespaces: bool = True,
         default_graph_uri: List[str] = None,
         named_graph_uri: List[str] = None,
     ) -> bytes | dict:
@@ -289,6 +297,7 @@ class QueryManager(Resource):
           timeout: Number of ms after which the query should time out. 0 or less implies no timeout
           reasoning: Enable reasoning for the query
           bindings: Map between query variables and their values
+          prettify: Will ensure all predicate for a group together
           content_type: Content type for results. Defaults to 'application/sparql-results+json'
           use_namespaces: Rquest query results with namespace substitution/prefix lines
           default_graph_uri: URI(s) to be used as the default graph (equivalent to FROM)
@@ -318,19 +327,19 @@ class QueryManager(Resource):
 
         return self._query(query, "query", locals())
 
-    @validate_arguments()
+    @custom_validate_arguments
     def paths(
         self,
         query,
         bindings: dict = None,
-        content_type: SelectContentType = SelectContentType.SPARQL_JSON,
+        content_type: Union[SelectContentType, str] = SelectContentType.SPARQL_JSON,
         base_uri: str = None,
         reasoning: bool = False,
         schema_name: str = None,
         timeout: int = None,
         limit: int = None,
         offset: int = None,
-        use_namespaces: bool = None,
+        use_namespaces: bool = True,
         default_graph_uri: List[str] = None,
         named_graph_uri: List[str] = None,
     ):
@@ -376,19 +385,19 @@ class QueryManager(Resource):
 
         return self._query(query, "query", locals())
 
-    @validate_arguments()
+    @custom_validate_arguments
     def ask(
         self,
         query,
         bindings: dict = None,
-        content_type: AskContentType = AskContentType.BOOLEAN,
+        content_type: Union[AskContentType, str] = AskContentType.BOOLEAN,
         base_uri: str = None,
         reasoning: bool = False,
         schema_name: str = None,
         timeout: int = None,
         limit: int = None,
         offset: int = None,
-        use_namespaces: bool = None,
+        use_namespaces: bool = True,
         default_graph_uri: List[str] = None,
         named_graph_uri: List[str] = None,
     ) -> bool | dict | bytes:
@@ -443,9 +452,7 @@ class QueryManager(Resource):
         reasoning: bool = False,
         schema_name: str = None,
         timeout: int = None,
-        limit: int = None,
-        offset: int = None,
-        use_namespaces: bool = None,
+        use_namespaces: bool = True,
         graph_uri: str = None,
         using_graph_uri: str = None,
         default_graph_uri: str = None,
@@ -460,8 +467,6 @@ class QueryManager(Resource):
           query: SPARQL ask query
           base_uri: Base URI for the parsing of the query
           schema_name: The name of the schema
-          limit: Maximum number of results to return
-          offset: Offset into the result set
           timeout: Number of ms after which the query should time out. 0 or less implies no timeout
           reasoning: Enable reasoning for the query
           bindings: Map between query variables and their values
@@ -493,7 +498,7 @@ class QueryManager(Resource):
         return self._query(query, "update", locals())
 
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
-    def add(self, content: Content, graph_uri: str = None):
+    def add(self, content: GraphContent, graph_uri: str = None):
         """Adds data to the database.
 
         Args:
@@ -512,7 +517,7 @@ class QueryManager(Resource):
         tx.commit()
 
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
-    def remove(self, content: Content, graph_uri: str = None):
+    def remove(self, content: GraphContent, graph_uri: str = None):
         """Removes data from the database.
 
         Args:
@@ -644,7 +649,7 @@ class Transaction(QueryManager):
     ):
         url = f"/{db_name}/transaction/begin"
 
-        if new and tx_id is None:
+        if new:
             if tx_id is not None:
                 url = url + f"/{tx_id}"
 
@@ -679,6 +684,7 @@ class Transaction(QueryManager):
     def _path(self):
         return f"/{self.db_name}/{self.__id}"
 
+    # noinspection PyMethodOverriding
     def _query(self, query, method, options: dict):
 
         if self.__closed:
@@ -731,7 +737,7 @@ class Transaction(QueryManager):
         except StardogException as e:
             if self.__auto_rollback:
                 self.rollback()
-                self.__reason = f"This transaction was auto-rollbacked: {e.msg}"
+                self.__reason = f"This transaction was auto-rollbacked: {e}"
             raise e
 
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
@@ -775,7 +781,7 @@ class Transaction(QueryManager):
         except Exception as e:
             if self.__auto_rollback:
                 self.rollback()
-            self.__reason = f"This transaction was auto-rollbacked: {e.msg}"
+            self.__reason = f"This transaction was auto-rollbacked: {e}"
             raise e
 
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
@@ -818,9 +824,9 @@ class Transaction(QueryManager):
                     data=data,
                 )
         except StardogException as e:
-            if self.auto_rollback:
+            if self.__auto_rollback:
                 self.rollback()
-                self.__reason = f"This transaction was auto-rollbacked: {e.msg}"
+                self.__reason = f"This transaction was auto-rollbacked: {e}"
             raise e
 
     @validate_arguments()
@@ -865,7 +871,7 @@ class Transaction(QueryManager):
         except StardogException as e:
             if self.__auto_rollback:
                 self.rollback()
-                self.__reason = f"This transaction was auto-rollbacked: {e.msg}"
+                self.__reason = f"This transaction was auto-rollbacked: {e}"
             raise e
 
     def explain_inference(self, content):
@@ -927,3 +933,15 @@ class Transaction(QueryManager):
                 )
             else:
                 raise e
+
+    def size(self, exact: bool = False):
+        """Database size.
+
+        Args:
+          exact: Calculate the size exactly. Defaults to False
+
+        Returns:
+          int: The number of elements in database
+        """
+        r = self.client().get("/size", params={"exact": exact})
+        return int(r.text)

@@ -8,7 +8,6 @@ from typing import ForwardRef, List, Union, TypeVar
 import inflection as inflection
 from pydantic import validate_arguments
 from stardog2.connector.client import Client
-from stardog2.utils.smart_enum import SmartEnum
 
 T = TypeVar("T")
 
@@ -19,6 +18,7 @@ StoredQuery = ForwardRef("StoredQuery")
 Resources = Union[Entity, Database, StoredQuery]
 
 
+# noinspection PyPep8Naming
 class mixedmethod(object):
     """This decorator mutates a function defined in a class into a 'mixed' class and instance method.
 
@@ -160,24 +160,24 @@ class Resource(Base):
         return self
 
 
-class Request(SmartEnum):
+class Request(str, Enum):
     GET = ("get",)
     POST = "post"
     DELETE = "delete"
     PUT = "put"
 
 
-class InputType(SmartEnum):
+class InputType(str, Enum):
     DELIMITED = "DELIMITED"
     JSON = "JSON"
 
 
-class Syntax(SmartEnum):
+class Syntax(str, Enum):
     R2RML = "R2RML"
     SMS2 = "SMS2"
 
 
-class ResourceType(SmartEnum):
+class ResourceType(str, Enum):
     USER = "user"
     ROLE = "role"
     NAMED_GRAPH = "named-graph"
@@ -219,7 +219,7 @@ GRANT_MAP = {
 }
 
 
-class GrantType(Enum):
+class GrantType(str, Enum):
     CREATE = "create"
     READ = "read"
     WRITE = "write"

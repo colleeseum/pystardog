@@ -41,10 +41,16 @@ class Test:
         # clean dangling tx
         txs = qm.list_tx()
         for tx in txs:
-            tx.commit()
+            try:
+                tx.commit()
+            except StardogException as e:
+                pass
 
         # make sure the namegraph to test update is removed.
-        qm.clear("https://example.org/stardog#test")
+        try:
+            qm.clear("https://example.org/stardog#test")
+        except StardogException as e:
+            pass
 
 
 class TestQueryManager(Test):
@@ -196,14 +202,14 @@ class TestQueryManager(Test):
     #############################
 
     def test_graph_describe_turtle_default(self):
-        expect_res = b'\n<http://www.w3.org/ns/r2rml#class> <https://schema.org/rangeIncludes> <http://www.w3.org/2001/XMLSchema#string> ;\n   <http://www.w3.org/2000/01/rdf-schema#comment> "Class" ;\n   a <http://www.w3.org/2002/07/owl#DatatypeProperty> ;\n   <http://www.w3.org/2000/01/rdf-schema#label> "class" ;\n   <https://schema.org/domainIncludes> <http://www.w3.org/ns/r2rml#TermMap> .'
+        expect_res = b'@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix : <http://api.stardog.com/> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix stardog: <tag:stardog:api:> .\n\n<http://www.w3.org/ns/r2rml#class> <https://schema.org/rangeIncludes> xsd:string ;\n   rdfs:comment "Class" ;\n   a owl:DatatypeProperty ;\n   rdfs:label "class" ;\n   <https://schema.org/domainIncludes> <http://www.w3.org/ns/r2rml#TermMap> .'
         qm = QueryManager("catalog")
         res = qm.graph("DESCRIBE <http://www.w3.org/ns/r2rml#class>")
 
         assert expect_res == res
 
     def test_graph_describe_trig(self):
-        expect_res = b'\n{\n    <http://www.w3.org/ns/r2rml#class> <https://schema.org/rangeIncludes> <http://www.w3.org/2001/XMLSchema#string> ;\n      <http://www.w3.org/2000/01/rdf-schema#comment> "Class" ;\n      a <http://www.w3.org/2002/07/owl#DatatypeProperty> ;\n      <http://www.w3.org/2000/01/rdf-schema#label> "class" ;\n      <https://schema.org/domainIncludes> <http://www.w3.org/ns/r2rml#TermMap> .\n}\n'
+        expect_res = b'@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix : <http://api.stardog.com/> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix stardog: <tag:stardog:api:> .\n\n{\n    <http://www.w3.org/ns/r2rml#class> <https://schema.org/rangeIncludes> xsd:string ;\n      rdfs:comment "Class" ;\n      a owl:DatatypeProperty ;\n      rdfs:label "class" ;\n      <https://schema.org/domainIncludes> <http://www.w3.org/ns/r2rml#TermMap> .\n}\n'
         qm = QueryManager("catalog")
         res = qm.graph(
             "DESCRIBE <http://www.w3.org/ns/r2rml#class>",
@@ -233,7 +239,7 @@ class TestQueryManager(Test):
         assert expect_res == res
 
     def test_graph_describe_xml(self):
-        expect_res = b'<?xml version="1.0" encoding="UTF-8"?>\n<rdf:RDF\n\txmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">\n\n<rdf:Description rdf:about="http://www.w3.org/ns/r2rml#class">\n\t<rangeIncludes xmlns="https://schema.org/" rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>\n\t<comment xmlns="http://www.w3.org/2000/01/rdf-schema#" rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Class</comment>\n\t<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>\n\t<label xmlns="http://www.w3.org/2000/01/rdf-schema#" rdf:datatype="http://www.w3.org/2001/XMLSchema#string">class</label>\n\t<domainIncludes xmlns="https://schema.org/" rdf:resource="http://www.w3.org/ns/r2rml#TermMap"/>\n</rdf:Description>\n\n</rdf:RDF>'
+        expect_res = b'<?xml version="1.0" encoding="UTF-8"?>\n<rdf:RDF\n\txmlns="http://api.stardog.com/"\n\txmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n\txmlns:owl="http://www.w3.org/2002/07/owl#"\n\txmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"\n\txmlns:stardog="tag:stardog:api:"\n\txmlns:xsd="http://www.w3.org/2001/XMLSchema#">\n\n<rdf:Description rdf:about="http://www.w3.org/ns/r2rml#class">\n\t<rangeIncludes xmlns="https://schema.org/" rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>\n\t<rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Class</rdfs:comment>\n\t<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>\n\t<rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">class</rdfs:label>\n\t<domainIncludes xmlns="https://schema.org/" rdf:resource="http://www.w3.org/ns/r2rml#TermMap"/>\n</rdf:Description>\n\n</rdf:RDF>'
         qm = QueryManager("catalog")
         res = qm.graph(
             "DESCRIBE <http://www.w3.org/ns/r2rml#class>",
@@ -244,20 +250,26 @@ class TestQueryManager(Test):
 
     def test_graph_describe_ld_json(self):
         expect_res = {
+            "@context": {
+                "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+                "owl": "http://www.w3.org/2002/07/owl#",
+                "@vocab": "http://api.stardog.com/",
+                "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                "stardog": "tag:stardog:api:",
+                "xsd": "http://www.w3.org/2001/XMLSchema#",
+            },
             "@graph": [
                 {
                     "@id": "http://www.w3.org/ns/r2rml#class",
-                    "@type": "http://www.w3.org/2002/07/owl#DatatypeProperty",
-                    "https://schema.org/rangeIncludes": {
-                        "@id": "http://www.w3.org/2001/XMLSchema#string"
-                    },
+                    "@type": "owl:DatatypeProperty",
+                    "https://schema.org/rangeIncludes": {"@id": "xsd:string"},
                     "https://schema.org/domainIncludes": {
                         "@id": "http://www.w3.org/ns/r2rml#TermMap"
                     },
-                    "http://www.w3.org/2000/01/rdf-schema#comment": {"@value": "Class"},
-                    "http://www.w3.org/2000/01/rdf-schema#label": {"@value": "class"},
+                    "rdfs:comment": {"@value": "Class"},
+                    "rdfs:label": {"@value": "class"},
                 }
-            ]
+            ],
         }
         qm = QueryManager("catalog")
         res = qm.graph(
@@ -488,10 +500,12 @@ class TestTransaction(Test):
 
     def test_begin_no_db(self):
         qm = QueryManager("nodb")
+
         with pytest.raises(
             StardogException,
             match=re.escape("[404] 0D0DU2: Database 'nodb' does not exist."),
         ) as e:
+            # noinspection PyUnusedLocal
             tx = qm.begin_tx()
 
         assert e.value.http_code == 404
@@ -613,7 +627,7 @@ class TestTransaction(Test):
     #############################
 
     def test_graph_describe_turtle_default(self):
-        expect_res = b'\n<http://www.w3.org/ns/r2rml#class> <https://schema.org/rangeIncludes> <http://www.w3.org/2001/XMLSchema#string> ;\n   <http://www.w3.org/2000/01/rdf-schema#comment> "Class" ;\n   a <http://www.w3.org/2002/07/owl#DatatypeProperty> ;\n   <http://www.w3.org/2000/01/rdf-schema#label> "class" ;\n   <https://schema.org/domainIncludes> <http://www.w3.org/ns/r2rml#TermMap> .'
+        expect_res = b'@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix : <http://api.stardog.com/> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix stardog: <tag:stardog:api:> .\n\n<http://www.w3.org/ns/r2rml#class> <https://schema.org/rangeIncludes> xsd:string ;\n   rdfs:comment "Class" ;\n   a owl:DatatypeProperty ;\n   rdfs:label "class" ;\n   <https://schema.org/domainIncludes> <http://www.w3.org/ns/r2rml#TermMap> .'
         tx = Transaction("catalog")
         res = tx.graph("DESCRIBE <http://www.w3.org/ns/r2rml#class>")
         tx.commit()
@@ -621,7 +635,7 @@ class TestTransaction(Test):
         assert expect_res == res
 
     def test_graph_describe_trig(self):
-        expect_res = b'\n{\n    <http://www.w3.org/ns/r2rml#class> <https://schema.org/rangeIncludes> <http://www.w3.org/2001/XMLSchema#string> ;\n      <http://www.w3.org/2000/01/rdf-schema#comment> "Class" ;\n      a <http://www.w3.org/2002/07/owl#DatatypeProperty> ;\n      <http://www.w3.org/2000/01/rdf-schema#label> "class" ;\n      <https://schema.org/domainIncludes> <http://www.w3.org/ns/r2rml#TermMap> .\n}\n'
+        expect_res = b'@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix : <http://api.stardog.com/> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix stardog: <tag:stardog:api:> .\n\n{\n    <http://www.w3.org/ns/r2rml#class> <https://schema.org/rangeIncludes> xsd:string ;\n      rdfs:comment "Class" ;\n      a owl:DatatypeProperty ;\n      rdfs:label "class" ;\n      <https://schema.org/domainIncludes> <http://www.w3.org/ns/r2rml#TermMap> .\n}\n'
         tx = Transaction("catalog")
         res = tx.graph(
             "DESCRIBE <http://www.w3.org/ns/r2rml#class>",
@@ -654,7 +668,7 @@ class TestTransaction(Test):
         assert expect_res == res
 
     def test_graph_describe_xml(self):
-        expect_res = b'<?xml version="1.0" encoding="UTF-8"?>\n<rdf:RDF\n\txmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">\n\n<rdf:Description rdf:about="http://www.w3.org/ns/r2rml#class">\n\t<rangeIncludes xmlns="https://schema.org/" rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>\n\t<comment xmlns="http://www.w3.org/2000/01/rdf-schema#" rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Class</comment>\n\t<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>\n\t<label xmlns="http://www.w3.org/2000/01/rdf-schema#" rdf:datatype="http://www.w3.org/2001/XMLSchema#string">class</label>\n\t<domainIncludes xmlns="https://schema.org/" rdf:resource="http://www.w3.org/ns/r2rml#TermMap"/>\n</rdf:Description>\n\n</rdf:RDF>'
+        expect_res = b'<?xml version="1.0" encoding="UTF-8"?>\n<rdf:RDF\n\txmlns="http://api.stardog.com/"\n\txmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n\txmlns:owl="http://www.w3.org/2002/07/owl#"\n\txmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"\n\txmlns:stardog="tag:stardog:api:"\n\txmlns:xsd="http://www.w3.org/2001/XMLSchema#">\n\n<rdf:Description rdf:about="http://www.w3.org/ns/r2rml#class">\n\t<rangeIncludes xmlns="https://schema.org/" rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>\n\t<rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Class</rdfs:comment>\n\t<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>\n\t<rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">class</rdfs:label>\n\t<domainIncludes xmlns="https://schema.org/" rdf:resource="http://www.w3.org/ns/r2rml#TermMap"/>\n</rdf:Description>\n\n</rdf:RDF>'
         tx = Transaction("catalog")
         res = tx.graph(
             "DESCRIBE <http://www.w3.org/ns/r2rml#class>",
@@ -666,20 +680,26 @@ class TestTransaction(Test):
 
     def test_graph_describe_ld_json(self):
         expect_res = {
+            "@context": {
+                "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+                "owl": "http://www.w3.org/2002/07/owl#",
+                "@vocab": "http://api.stardog.com/",
+                "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                "stardog": "tag:stardog:api:",
+                "xsd": "http://www.w3.org/2001/XMLSchema#",
+            },
             "@graph": [
                 {
                     "@id": "http://www.w3.org/ns/r2rml#class",
-                    "@type": "http://www.w3.org/2002/07/owl#DatatypeProperty",
-                    "https://schema.org/rangeIncludes": {
-                        "@id": "http://www.w3.org/2001/XMLSchema#string"
-                    },
+                    "@type": "owl:DatatypeProperty",
+                    "https://schema.org/rangeIncludes": {"@id": "xsd:string"},
                     "https://schema.org/domainIncludes": {
                         "@id": "http://www.w3.org/ns/r2rml#TermMap"
                     },
-                    "http://www.w3.org/2000/01/rdf-schema#comment": {"@value": "Class"},
-                    "http://www.w3.org/2000/01/rdf-schema#label": {"@value": "class"},
+                    "rdfs:comment": {"@value": "Class"},
+                    "rdfs:label": {"@value": "class"},
                 }
-            ]
+            ],
         }
         tx = Transaction("catalog")
         res = tx.graph(
@@ -906,7 +926,7 @@ class TestTransaction(Test):
         ]
         tx = Transaction("catalog")
 
-        # there a bug, at the moment we catch the error have give a more user friendly error. Once the bug is resolve
+        # there a bug, at the moment we catch the error have give a more user-friendly error. Once the bug is resolve
         # the code is expected to work
         try:
             res = tx.explain_inference(
@@ -925,7 +945,7 @@ class TestTransaction(Test):
     def test_explain_inconsistency(self):
         tx = Transaction("catalog")
 
-        # there a bug, at the moment we catch the error have give a more user friendly error. Once the bug is resolve
+        # there a bug, at the moment we catch the error have give a more user-friendly error. Once the bug is resolve
         # the code is expected to work
 
         try:
