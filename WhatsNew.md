@@ -116,4 +116,99 @@ tx = Transaction('db', auto_rollback=False)
 ```
 
 
+# DatabaseManager and Database (WIP)
 
+## Database Manager
+
+All Database actions are consolidated within the `DatabaseManager ` and `Database` class.  
+
+The `DatabaseManager`  consolidate all databases management method such `metadata`, `list`, `exists` and `create` from the original 
+`Admin` making it easier to find what is needed. A added functionality is `list_dict` which return the original `json`. 
+
+The `create` method use a schema definition `AllDatabaseOptions` to help you understand which options that are available 
+creating a database. 
+
+Other method made available are
+    `list_stored_queries` - return a list of all `StoredQuery`
+    `create_stored_query` will create a store query not associated to any DB. 
+    `list_stored_queries` - return a list of all `VirtualGraph`
+    `create_virtual_graph` - will create a virtual graph not associated to any DB
+
+For example
+```
+    dbm = DatabaseManager()
+    
+    db = dbm.create(...)
+    db_list = dbm.list()
+    
+    sq = dmb.create_stored_query(...)
+    sq_list = dbm.list_stored_queries(...)
+    
+    vg = dmb.create_stored_query(...)
+    vg_list = dbm.list_virtual_graphs(...)
+    
+```
+
+## Database
+
+The `Database` offers all the features the original did but more. 
+* ability to run queryies start transaction right from the `Database` object
+* `set_options` support both `OnlineDatabaseOptions` and `OfflineDatabaseOptions` making it much easier to know which options are mutables and when to offline the db. 
+* `get_options` 
+ * uses a enumerated type greatly reducing the chance of typo 
+ * still offering you the chance of passing a simple string when automating. Either way it validated.
+* New
+ * `get_metrics` return the prometheus query only for this database.  
+ * `get_option` a convenience method that return the value when only interested in a single option
+ * `get_metric` a convenience method that return the value when only interested in a single metric
+ * `get_queries` return a list of `Query` object for this database only.
+ * `list_stored_queries`, return a list of `StoreQuery` subclass object either associated or available to be executed against database
+ * `create_stored_query` will create a new stored query  associated to this database. 
+ * `list_stored_queries`, return a list of `VirtualGraph` object either associated or available to be executed against database
+ * `create_virtual_graph` witll create a new virtual graph associated to this database
+ * `create_checkpoint` will create a new checkpoint associated to this database
+ * `list_checkpoints` will return a list of `Checkpoint` object associated to this database 
+ * `list_constraints` will return a list of `Constraint` objectassociated 
+
+A little side node on list_stored_queries. The object returned will be one of the following:
+
+* `AskStoredQuery`
+* `SelectStoredQuery`
+* `GraphStoredQuery`
+* `PathStoredQuery`
+* `StoredQuery`
+
+For more detail see StoredQuery section
+
+## StoredQuery (future work)
+
+The StoredQuery type objects will function more or less the same as it predecessor. One key difference is that will have the
+`execute` method. When retreiving the `StoredQuery` pystardog will try to auto-detect the type of queries is stored. The 
+options are
+
+* `AskStoredQuery`
+* `SelectStoredQuery`
+* `GraphStoredQuery`
+* `PathStoredQuery`
+* `UpdateStoredQuery`
+
+The `execute` method arguments will be more or less the same as `ask`, `select`, `graph`, `path` and `update` method 
+found on the `QueryManager` respectively.
+
+Alternatively you can pass these object as the `query` argument of their respective method. This can be extremely useful
+when the query should be part of a specific `Transaction`. For example. 
+
+```  
+    db.get_stored_query
+```
+
+If Stardog is unable to auto-detect, it will return a simple `StoredQuery` and it will be the developers responsiblity t
+
+## Virtual Graph (future work)
+
+## CheckPoint (future work)
+
+## Constraint (future work)
+    Currently not available in pystardog, and documentation limited in HTTP API. 
+
+## DataSource (future work)
