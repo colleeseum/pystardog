@@ -29,28 +29,31 @@ def sd_validate_arguments(f, global_vars):
 
     wrapper.__signature__ = sig
     for n, v in f.__annotations__.items():
-        str_v = str(v)
-        c = union2_p.match(str_v)
-
-        if c:
-            keys = c.group(1).split(".")
-            wrapper.__annotations__[n] = get_object(keys)
-
+        if n == "return":
+            wrapper.__annotations__[n] = v
         else:
-            c = list2_p.match(str_v)
+            str_v = str(v)
+            c = union2_p.match(str_v)
+
             if c:
                 keys = c.group(1).split(".")
-                wrapper.__annotations__[n] = List[get_object(keys)]
+                wrapper.__annotations__[n] = get_object(keys)
+
             else:
-                c = union3_p.match(str_v)
+                c = list2_p.match(str_v)
                 if c:
-                    keys1 = c.group(1).split(".")
-                    keys2 = c.group(2).split(".")
-                    x = Union[get_object(keys1), get_object(keys2)]
-                    wrapper.__annotations__[n] = Union[
-                        get_object(keys1), get_object(keys2)
-                    ]
+                    keys = c.group(1).split(".")
+                    wrapper.__annotations__[n] = List[get_object(keys)]
                 else:
-                    wrapper.__annotations__[n] = v
+                    c = union3_p.match(str_v)
+                    if c:
+                        keys1 = c.group(1).split(".")
+                        keys2 = c.group(2).split(".")
+                        x = Union[get_object(keys1), get_object(keys2)]
+                        wrapper.__annotations__[n] = Union[
+                            get_object(keys1), get_object(keys2)
+                        ]
+                    else:
+                        wrapper.__annotations__[n] = v
 
     return validate_arguments(wrapper)
