@@ -1,6 +1,9 @@
 import json
 import re
+
 import pytest
+from pandas import DataFrame
+
 from stardog2.exceptions import StardogException
 from stardog2.connector import client
 from stardog2.content import (
@@ -114,10 +117,21 @@ class TestQueryManager(Test):
     #
     #############################
 
-    def test_select(self):
+    def test_select_default(self):
+        qm = QueryManager("catalog")
+        df: DataFrame = qm.select(
+            "select * { <http://www.w3.org/ns/dcat#Resource> ?p ?o}",
+        )
+
+        assert df.iloc[-1, 0] == "rdf:type"
+
+    def test_select_sparql_result_json(self):
         expect_res = b'{"head":{"vars":["p","o"]},"results":{"bindings":[{"p":{"type":"uri","value":"http://www.w3.org/2000/01/rdf-schema#comment"},"o":{"type":"literal","value":"An entry in a Data Catalog corresponding to a source of data. Typically an RDBMS, but this can represent other databases, physical data assets, or third party sources."}},{"p":{"type":"uri","value":"http://www.w3.org/1999/02/22-rdf-syntax-ns#type"},"o":{"type":"uri","value":"http://www.w3.org/2000/01/rdf-schema#Class"}}]}}'
         qm = QueryManager("catalog")
-        res = qm.select("select * { <http://www.w3.org/ns/dcat#Resource> ?p ?o}")
+        res = qm.select(
+            "select * { <http://www.w3.org/ns/dcat#Resource> ?p ?o}",
+            content_type=SelectContentType.SPARQL_JSON,
+        )
 
         assert json.loads(expect_res) == res
 
@@ -531,10 +545,22 @@ class TestTransaction(Test):
     #
     #############################
 
-    def test_select(self):
+    def test_select_default(self):
+        tx = Transaction("catalog")
+        df = tx.select(
+            "select * { <http://www.w3.org/ns/dcat#Resource> ?p ?o}",
+        )
+        tx.commit()
+
+        assert df.iloc[-1, 0] == "rdf:type"
+
+    def test_select_sparql_json(self):
         expect_res = b'{"head":{"vars":["p","o"]},"results":{"bindings":[{"p":{"type":"uri","value":"http://www.w3.org/2000/01/rdf-schema#comment"},"o":{"type":"literal","value":"An entry in a Data Catalog corresponding to a source of data. Typically an RDBMS, but this can represent other databases, physical data assets, or third party sources."}},{"p":{"type":"uri","value":"http://www.w3.org/1999/02/22-rdf-syntax-ns#type"},"o":{"type":"uri","value":"http://www.w3.org/2000/01/rdf-schema#Class"}}]}}'
         tx = Transaction("catalog")
-        res = tx.select("select * { <http://www.w3.org/ns/dcat#Resource> ?p ?o}")
+        res = tx.select(
+            "select * { <http://www.w3.org/ns/dcat#Resource> ?p ?o}",
+            content_type=SelectContentType.SPARQL_JSON,
+        )
         tx.commit()
 
         assert json.loads(expect_res) == res

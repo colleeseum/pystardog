@@ -891,7 +891,8 @@ class TestContentType:
         assert ContentType.CSV
         assert ContentType.TSV
         assert ContentType.LD_JSON
-        assert len(ContentType) == 13
+        assert ContentType.DATAFRAME
+        assert len(ContentType) == 14
 
     def test_select_type(self):
         assert SelectContentType.SPARQL_XML
@@ -899,7 +900,8 @@ class TestContentType:
         assert SelectContentType.SPARQL_JSON
         assert SelectContentType.CSV
         assert SelectContentType.TSV
-        assert len(SelectContentType) == 5
+        assert SelectContentType.DATAFRAME
+        assert len(SelectContentType) == 6
 
     def test_ask_type(self):
         assert AskContentType.BOOLEAN
