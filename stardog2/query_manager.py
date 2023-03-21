@@ -158,6 +158,9 @@ class QueryManager(Resource):
         else:
             return super().delete()
 
+    def namespaces(self):
+        return Namespaces(self.db_name)
+
     def list_tx(self) -> List[Transaction]:
         def mapper(n):
             return Transaction(n["db"], n["id"], new=False)

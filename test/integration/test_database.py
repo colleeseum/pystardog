@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from stardog2 import GraphFile
 from stardog2.connector import client
+from stardog2.content import SelectContentType
 from stardog2.database import DatabaseManager, Database
 from stardog2.namespaces import Namespaces
 from stardog2.database_options import (
@@ -77,7 +78,10 @@ class TestDatabaseManager(Test):
             ],
         )
 
-        res = db.select("SELECT DISTINCT ?g { GRAPH ?g { ?s ?p ?o }}")
+        res = db.select(
+            "SELECT DISTINCT ?g { GRAPH ?g { ?s ?p ?o }}",
+            content_type=SelectContentType.SPARQL_JSON,
+        )
         # j = options.json()
         assert res["results"]["bindings"] == [
             {"g": {"type": "uri", "value": "urn:ns1"}},
@@ -121,7 +125,7 @@ class TestDatabaseManager(Test):
 
         new_options = OfflineDatabaseOptions(spatial_enabled=True)
         with pytest.raises(
-                StardogException, match=re.escape("Cannot change configuration")
+            StardogException, match=re.escape("Cannot change configuration")
         ) as e:
             db.set_options(new_options)
 
@@ -152,7 +156,6 @@ class TestDatabaseManager(Test):
 
 
 class TestNamespace(Test):
-
     def test_manager_from_string(self):
         nss = Namespaces("catalog")
         assert len(nss) == 6
