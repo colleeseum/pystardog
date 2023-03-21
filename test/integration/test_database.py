@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from stardog2 import GraphFile
 from stardog2.connector import client
 from stardog2.database import DatabaseManager, Database
+from stardog2.namespaces import Namespaces
 from stardog2.database_options import (
     OnlineDatabaseOptions,
     AllDatabaseOptions,
@@ -120,7 +121,7 @@ class TestDatabaseManager(Test):
 
         new_options = OfflineDatabaseOptions(spatial_enabled=True)
         with pytest.raises(
-            StardogException, match=re.escape("Cannot change configuration")
+                StardogException, match=re.escape("Cannot change configuration")
         ) as e:
             db.set_options(new_options)
 
@@ -149,3 +150,13 @@ class TestDatabaseManager(Test):
 
         db.backup("/tmp/backup")
 
+
+class TestNamespace(Test):
+
+    def test_manager_from_string(self):
+        nss = Namespaces("catalog")
+        assert len(nss) == 6
+
+    def test_manager_from_db(self):
+        nss = Namespaces(Database("catalog"))
+        assert len(nss) == 6

@@ -125,7 +125,8 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
             )
             assert text == plan
 
-    def test_select_defaults(self):
+
+    def test_select_sparql_json(self):
         # noinspection PyUnusedLocal
         def json(arg):
             return "json"
@@ -134,13 +135,15 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
         mock_response.status_code = 200
         mock_response.content = "content"
         mock_response.json = MethodType(json, mock_response)
-
         with mock.patch.object(
             Client, "post", return_value=mock_response
         ) as mock_method:
             qm = QueryManager("catalog")
 
-            res = qm.select("select * { <http://www.w3.org/ns/dcat#Resource> ?p ?o}")
+            res = qm.select(
+                "select * { <http://www.w3.org/ns/dcat#Resource> ?p ?o}",
+                content_type=SelectContentType.SPARQL_JSON,
+            )
             assert self.check_call(
                 mock_method,
                 "/catalog/query",
@@ -411,7 +414,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
 
             assert res == b"content"
 
-    def test_paths_defaults(self):
+    def test_paths_sparlq_json(self):
         # noinspection PyUnusedLocal
         def json(arg):
             return "json"
@@ -427,7 +430,8 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
             qm = QueryManager("catalog")
 
             res = qm.select(
-                "PATHS START ?s = <http://www.w3.org/ns/r2rml#class> END ?e via rdf:type"
+                "PATHS START ?s = <http://www.w3.org/ns/r2rml#class> END ?e via rdf:type",
+                content_type=SelectContentType.SPARQL_JSON,
             )
             assert self.check_call(
                 mock_method,
@@ -806,7 +810,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
             )
             assert text == plan
 
-    def test_select_defaults(self):
+    def test_select_sparql_json(self):
         # noinspection PyUnusedLocal
         def json(arg):
             return "json"
@@ -821,7 +825,10 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
         ) as mock_method:
             tx = self.get_tx()
 
-            res = tx.select("select * { <http://www.w3.org/ns/dcat#Resource> ?p ?o}")
+            res = tx.select(
+                "select * { <http://www.w3.org/ns/dcat#Resource> ?p ?o}",
+                content_type=SelectContentType.SPARQL_JSON,
+            )
             assert self.check_call(
                 mock_method,
                 "/dbtest/tx_id_uuid/query",
@@ -1064,7 +1071,7 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
 
             assert res == b"content"
 
-    def test_paths_defaults(self):
+    def test_paths_sparql_json(self):
         # noinspection PyUnusedLocal
         def json(arg):
             return "json"
@@ -1080,7 +1087,8 @@ Distinct [#24], memory: {total=256K (80.0%); max=224K}, results: 0, wall time: 2
             tx = self.get_tx()
 
             res = tx.select(
-                "PATHS START ?s = <http://www.w3.org/ns/r2rml#class> END ?e via rdf:type"
+                "PATHS START ?s = <http://www.w3.org/ns/r2rml#class> END ?e via rdf:type",
+                content_type=SelectContentType.SPARQL_JSON,
             )
             assert self.check_call(
                 mock_method,

@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+from pandas import DataFrame
+
+from stardog2.namespaces import Namespaces
+from stardog2.utils.stream_reader import iterable_to_stream
 from distutils.util import strtobool
 from typing import List, ForwardRef, Union
 
+import pandas as pd
 from pydantic import validate_arguments
 
 from stardog2.content import (
@@ -14,7 +19,7 @@ from stardog2.content import (
     GraphContent,
 )
 from stardog2.exceptions import StardogException
-from stardog2.resource import Resource, ResourceType, Database
+from stardog2.resource import Resource, ResourceType
 from stardog2.utils.pydantic import sd_validate_arguments
 
 Transaction = ForwardRef("Transaction")
@@ -54,6 +59,7 @@ class QueryManager(Resource):
 
     def _query(self, query, method, options: dict, txid: str = None):
         params = {"query": query}
+        content_type = options["content_type"]
 
         keys = options.keys()
 
@@ -83,7 +89,6 @@ class QueryManager(Resource):
 
         # query bindings
         bindings = options["bindings"] if options["bindings"] is not None else {}
-        content_type = options.get("content_type").value
 
         for k, v in bindings.items():
             params["${}".format(k)] = v
@@ -92,14 +97,30 @@ class QueryManager(Resource):
             f"/{self.db_name}/{txid}/{method}" if txid else f"/{self.db_name}/{method}"
         )
 
-        r = self.client().post(url, data=params, headers={"Accept": content_type})
+        stream = True if content_type == ContentType.DATAFRAME else False
 
-        return (
-            r.json()
-            if content_type == ContentType.SPARQL_JSON.value
-            or content_type == ContentType.LD_JSON.value
-            else r.content
+        # @contextlib.contextmanager
+        # def _nextcontext(r):
+        #     yield next(r)
+        http_content_type = ContentType.CSV if stream else content_type
+
+        r = self.client().post(
+            url, data=params, headers={"Accept": http_content_type}, stream=stream
         )
+
+        if (
+            content_type == ContentType.SPARQL_JSON
+            or content_type == ContentType.LD_JSON
+        ):
+            return r.json()
+        elif content_type == ContentType.DATAFRAME:
+            df = pd.read_csv(iterable_to_stream(r.iter_content(chunk_size=20000)))
+            if options["use_namespaces"]:
+                for ns in Namespaces(self.name):
+                    df.replace(ns.iri, f"{ns.prefix}:", regex=True, inplace=True)
+            return df
+        else:
+            return r.content
 
     def _explain_inference(self, content, tx_id: str = None) -> dict:
         with content.data() as data:
@@ -214,7 +235,7 @@ class QueryManager(Resource):
         self,
         query,
         bindings: dict = None,
-        content_type: Union[SelectContentType, str] = SelectContentType.SPARQL_JSON,
+        content_type: Union[SelectContentType, str] = SelectContentType.DATAFRAME,
         base_uri: str = None,
         reasoning: bool = False,
         schema_name: str = None,
@@ -224,7 +245,7 @@ class QueryManager(Resource):
         use_namespaces: bool = True,
         default_graph_uri: List[str] = None,
         named_graph_uri: List[str] = None,
-    ):
+    ) -> Union[DataFrame, dict, bytes]:
         """Executes a SPARQL select query.
 
         Args:
@@ -236,7 +257,7 @@ class QueryManager(Resource):
           timeout: Number of ms after which the query should time out. 0 or less implies no timeout
           reasoning: Enable reasoning for the query
           bindings: Map between query variables and their values
-          content_type: Content type for results. Defaults to 'application/sparql-results+json'
+          content_type: Content type for results. Defaults to SelectContentType.DATAFRAME
           use_namespaces: Rquest query results with namespace substitution/prefix lines
           default_graph_uri: URI(s) to be used as the default graph (equivalent to FROM)
           named_graph_uri: URI(s) to be used as  named graph (equivalent to FROM NAMED)
@@ -247,24 +268,21 @@ class QueryManager(Resource):
             StardogException: [400] QE0PE2: com.complexible.stardog.plan.eval.ExecutionException: Encountered
 
         Returns:
-          dict: If content_type='application/sparql-results+json'
+          dict: If content_type=SelectContentType.SPARQL_JSON
+          DataFrame: if content_type=SelectContentType.DATAFRAME
           bytes: Other content types
 
         Examples:
           >>> qm = QueryManager('test')
-              qm.select('select * {?s ?p ?o}', offset=100, limit=100, reasoning=True)
-          >>> db = Database('test')
-              db.select('select * {?s ?p ?o}', offset=100, limit=100, reasoning=True)
+          >>> qm.select('select * {?s ?p ?o}', offset=100, limit=100, reasoning=True)
+
           >>> qm = QueryManager('test')
-              tx = qm.begin_tx()
-              tx.select('select * {?s ?p ?o}', offset=100, limit=100, reasoning=True)
-          >>> db = Database('test')
-              tx = db.begin_tx()
-              tx.select('select * {?s ?p ?o}', offset=100, limit=100, reasoning=True)
+          >>> tx = qm.begin_tx()
+          >>> tx.select('select * {?s ?p ?o}', offset=100, limit=100, reasoning=True)
+
           bindings
 
           >>> qm.select('select * {?s ?p ?o}', bindings={'o': '<urn:a>'})
-          >>> db.select('select * {?s ?p ?o}', bindings={'o': '<urn:a>'})
         """
 
         return self._query(query, "query", locals())
@@ -309,20 +327,15 @@ class QueryManager(Resource):
 
         Examples:
           >>> qm = QueryManager('test')
-              qm.select('select * {?s ?p ?o}', offset=100, limit=100, reasoning=True)
-          >>> db = Database('test')
-              db.select('select * {?s ?p ?o}', offset=100, limit=100, reasoning=True)
+          >>> qm.select('select * {?s ?p ?o}', offset=100, limit=100, reasoning=True)
+
           >>> qm = QueryManager('test')
-              tx = qm.begin_tx()
-              tx.select('select * {?s ?p ?o}', offset=100, limit=100, reasoning=True)
-          >>> db = Database('test')
-              tx = db.begin_tx()
-              tx.select('select * {?s ?p ?o}', offset=100, limit=100, reasoning=True)
+          >>> tx = qm.begin_tx()
+          >>> tx.select('select * {?s ?p ?o}', offset=100, limit=100, reasoning=True)
 
           bindings
 
           >>> qm.select('construct { ?s ?p ?o } where { ?s ?p ?o } ', bindings={'o': '<urn:a>'})
-          >>> db.select('construct { ?s ?p ?o } where { ?s ?p ?o }', bindings={'o': '<urn:a>'})
         """
 
         return self._query(query, "query", locals())
@@ -367,20 +380,15 @@ class QueryManager(Resource):
 
         Examples:
           >>> qm = QueryManager('test')
-              qm.paths('paths start ?x = :subj end ?y = :obj via ?p')
-          >>> db = Database('test')
-              db.paths('paths start ?x = :subj end ?y = :obj via ?p')
+          >>> qm.paths('paths start ?x = :subj end ?y = :obj via ?p')
+
           >>> qm = QueryManager('test')
-              tx = qm.begin_tx()
-              tx.paths('paths start ?x = :subj end ?y = :obj via ?p')
-          >>> db = Database('test')
-              tx = db.begin_tx()
-              tx.paths('paths start ?x = :subj end ?y = :obj via ?p')
+          >>> tx = qm.begin_tx()
+          >>> tx.paths('paths start ?x = :subj end ?y = :obj via ?p')
 
           bindings
 
           >>> qm.select('paths start ?x = :subj end ?y = :obj via ?p', bindings={'o': '<urn:a>'})
-          >>> db.select('paths start ?x = :subj end ?y = :obj via ?p', bindings={'o': '<urn:a>'})
         """
 
         return self._query(query, "query", locals())
@@ -425,15 +433,11 @@ class QueryManager(Resource):
 
         Examples:
           >>> qm = QueryManager('test')
-              qm.ask('ask {:subj :pred :obj}', reasoning=True)
-          >>> db = Database('test')
-              db.ask('ask {:subj :pred :obj}', reasoning=True)
+          >>> qm.ask('ask {:subj :pred :obj}', reasoning=True)
+
           >>> qm = QueryManager('test')
-              tx = qm.begin_tx()
-              tx.ask('ask {:subj :pred :obj}', reasoning=True)
-          >>> db = Database('test')
-              tx = qm.begin_tx()
-              tx.ask('ask {:subj :pred :obj}', reasoning=True)
+          >>> tx = qm.begin_tx()
+          >>> tx.ask('ask {:subj :pred :obj}', reasoning=True)
         """
 
         r = self._query(query, "query", locals())
@@ -482,15 +486,11 @@ class QueryManager(Resource):
 
         Examples:
           >>> qm = QueryManager('test')
-              qm.update('INSERT DATA { :subj :pred :obj }')
-          >>> db = Database('test')
-              db.update('INSERT DATA { :subj :pred :obj }')
+          >>> qm.update('INSERT DATA { :subj :pred :obj }')
+
           >>> qm = QueryManager('test')
-              tx = qm.begin_tx()
-              tx.update('INSERT DATA { :subj :pred :obj }')
-          >>> db = Database('test')
-              tx = db.begin_tx()
-              tx.update('INSERT DATA { :subj :pred :obj }')
+          >>> tx = qm.begin_tx()
+          >>> tx.update('INSERT DATA { :subj :pred :obj }')
         """
 
         content_type = ContentType.JSON
@@ -506,10 +506,9 @@ class QueryManager(Resource):
           graph_uri (str, optional): Named graph into which to add the data
 
         Examples:
-          >>> db = Database('test')
-              db.add(File('example.ttl'), graph_uri='urn:graph')
-          >>> conn = QueryManager('test')
-              qm.add(File('example.ttl'), graph_uri='urn:graph')
+          >>> from stardog2.content import File
+          >>> qm = QueryManager('test')
+          >>> qm.add(File('example.ttl'), graph_uri='urn:graph')
         """
 
         tx = self.begin_tx()
@@ -525,10 +524,9 @@ class QueryManager(Resource):
           graph_uri (str, optional): Named graph into which to remove the data
 
         Examples:
-          >>> db = Database('test')
-              db.remove(File('example.ttl'), graph_uri='urn:graph')
-          >>> conn = QueryManager('test')
-              qm.remove(File('example.ttl'), graph_uri='urn:graph')
+          >>> from stardog2.content import File
+          >>> qm = QueryManager('test')
+          >>> qm.remove(File('example.ttl'), graph_uri='urn:graph')
         """
 
         tx = self.begin_tx()
@@ -543,10 +541,8 @@ class QueryManager(Resource):
           graph_uri (str, optional): Named graph into which to remove the data
 
         Examples:
-          >>> db = Database('test')
-              db.clear()
-          >>> conn = QueryManager('test')
-              qm.remove(graph_uri='urn:graph')
+          >>> qm = QueryManager('test')
+          >>> qm.remove(graph_uri='urn:graph')
         """
 
         tx = self.begin_tx()
@@ -565,15 +561,11 @@ class QueryManager(Resource):
 
         Examples:
           >>> qm = QueryManager('test')
-              qm.is_consistent()
-          >>> db = Database('test')
-              db.is_consistent()
+          >>> qm.is_consistent()
+
           >>> qm = QueryManager('test')
-              tx = qm.begin_tx()
-              tx.is_consistent()
-          >>> db = Database('test')
-              tx = qm.begin_tx()
-              tx.is_consistent()
+          >>> tx = qm.begin_tx()
+          >>> tx.is_consistent()
         """
         r = self.client().get(
             f"/{self.db_name}/reasoning/consistency", params={"graph-uri": graph_uri}
@@ -593,15 +585,11 @@ class QueryManager(Resource):
 
         Examples:
           >>> qm = QueryManager('test')
-              qm.explain_inference()
-          >>> db = Database('test')
-              db.explain_inference()
+          >>> qm.explain_inference()
+
           >>> qm = QueryManager('test')
-              tx = qm.begin_tx()
-              tx.explain_inference()
-          >>> db = Database('test')
-              tx = qm.begin_tx()
-              tx.explain_inference()
+          >>> tx = qm.begin_tx()
+          >>> tx.explain_inference()
         """
 
         return self._explain_inference(content)
@@ -705,7 +693,6 @@ class Transaction(QueryManager):
         Raises:
             stardog.exceptions.TransactionException
               If currently not in a transaction
-
         """
         if self.__closed:
             raise StardogException(
@@ -753,14 +740,11 @@ class Transaction(QueryManager):
             If not currently in a transaction
 
         Examples:
-          >>> db = Database('test')
-              tx = db.begin()
-              tx.add(File('example.ttl'), graph_uri='urn:graph')
-              tx.commit
-          >>> conn = QueryManager('test')
-              tx = conn.begin()
-              tx.add(File('example.ttl'), graph_uri='urn:graph')
-              tx.commit
+          >>> from stardog2.content import File
+          >>> qm = QueryManager('test')
+          >>> tx = qm.begin_tx()
+          >>> tx.add(File('example.ttl'), graph_uri='urn:graph')
+          >>> tx.commit
         """
         if self.__closed:
             raise StardogException(
@@ -797,14 +781,11 @@ class Transaction(QueryManager):
             If currently not in a transaction
 
         Examples:
-          >>> db = Database('test')
-              tx = db.begin()
-              tx.remove(File('example.ttl'), graph_uri='urn:graph')
-              tx.commit
-          >>> conn = QueryManager('test')
-              tx = conn.begin()
-              tx.remove(File('example.ttl'), graph_uri='urn:graph')
-              tx.commit
+          >>> from stardog2.content import File
+          >>> qm = QueryManager('test')
+          >>> tx = qm.begin_tx()
+          >>> tx.remove(File('example.ttl'), graph_uri='urn:graph')
+          >>> tx.commit
         """
 
         if self.__closed:
@@ -842,24 +823,16 @@ class Transaction(QueryManager):
 
         Examples:
           clear a specific named graph
-          >>> db = Database('test')
-              tx = db.begin()
-              tx.clear('urn:graph')
-              tx.commit()
-          >>> conn = QueryManager('test')
-              tx = conn.begin()
-              tx.clear('urn:graph')
-              tx.commit()
+          >>> qm = QueryManager('test')
+          >>> tx = qm.begin_tx()
+          >>> tx.clear('urn:graph')
+          >>> tx.commit()
 
           clear the whole database
-          >>> db = Database('test')
-              tx = db.begin()
-              tx.clear()
-              tx.commit()
-          >>> conn = QueryManager('test')
-              tx = conn.begin()
-              tx.clear()
-              tx.commit()
+          >>> qm = QueryManager('test')
+          >>> tx = qm.begin_tx()
+          >>> tx.clear()
+          >>> tx.commit()
         """
         if self.__closed:
             raise StardogException(
@@ -884,12 +857,11 @@ class Transaction(QueryManager):
           dict: Explanation results
 
         Examples:
+          >>> from stardog2.content import File
+
           >>> qm = QueryManager('test')
-              tx = qm.begin_tx()
-              tx.explain_inference(File('inferences.ttl'))
-          >>> db = Database('test')
-              tx = db.begin_tx()
-              tx.explain_inference(File('inferences.ttl'))
+          >>> tx = qm.begin_tx()
+          >>> tx.explain_inference(File('inferences.ttl'))
         """
 
         try:
@@ -914,12 +886,9 @@ class Transaction(QueryManager):
           dict: Explanation results
 
         Examples"
-          >>> db = Database('test')
-              tx = db.begin()
-              tx.explain_inconsistency()
           >>> qm = QueryManager('test')
-              tx = qm.begin()
-              tx.explain_inconsistency()
+          >>> tx = qm.begin_tx()
+          >>> tx.explain_inconsistency()
         """
 
         try:

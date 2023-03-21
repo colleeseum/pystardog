@@ -37,6 +37,7 @@ class ContentType(str, Enum):
     TSV = "text/tab-separated-values"
     JSON = "application/json"
     # ------------------------------
+    DATAFRAME = "df/csv"
 
 
 class GraphContentType(str, Enum):
@@ -49,6 +50,7 @@ class GraphContentType(str, Enum):
 
 
 class SelectContentType(str, Enum):
+    DATAFRAME = "df/csv"
     SPARQL_XML = "application/sparql-results+xml"
     BINARY_RDF = "application/x-binary-rdf-results-table"
     SPARQL_JSON = "application/sparql-results+json"
@@ -851,6 +853,6 @@ class ImportUrl(Url, _ImportMixIn):
         super().__init__(url)
 
 
-GraphContent = Union[GraphRaw, GraphFile, GraphUrl]
-MappingContent = Union[MappingRaw, MappingFile, MappingUrl]
-ImportContent = Union[ImportRaw, ImportFile, ImportUrl]
+GraphContent = Union[File, Raw, Url, GraphRaw, GraphFile, GraphUrl]
+MappingContent = Union[File, Raw, Url, MappingRaw, MappingFile, MappingUrl]
+ImportContent = Union[File, Raw, Url, ImportRaw, ImportFile, ImportUrl]
